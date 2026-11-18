@@ -7,8 +7,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const whoInput = document.getElementById("who");
   const howToApplyInput = document.getElementById("how-to-apply");
   const contactInput = document.getElementById("contact");
+  const meetingTitleInput = document.getElementById("meeting-title");
+  const hostDeptInput = document.getElementById("host-dept");
+  const reportWhenInput = document.getElementById("report-when");
+  const reportWhereInput = document.getElementById("report-where");
+  const agendaInput = document.getElementById("agenda");
+  const agendaResultsInput = document.getElementById("agenda-results");
   const recipientInput = document.getElementById("recipient");
   const toneInput = document.getElementById("tone");
+  const saveFactsBtn = document.getElementById("save-facts-btn");
+  const loadFactsBtn = document.getElementById("load-facts-btn");
+
+  const FACT_CARDS_STORAGE_KEY = "doc_draft_fact_cards";
 
   const errorBox = document.getElementById("error-box");
   const loadingBox = document.getElementById("loading-box");
@@ -400,6 +410,66 @@ document.addEventListener("DOMContentLoaded", () => {
     const promptBRadio = document.querySelector('input[name="prompt_type"][value="B"]');
     if (promptBRadio) {
       promptBRadio.checked = true;
+    }
+  });
+
+  function flashButtonText(button, temporaryText) {
+    const originalText = button.textContent;
+    button.textContent = temporaryText;
+    setTimeout(() => {
+      button.textContent = originalText;
+    }, 1500);
+  }
+
+  saveFactsBtn.addEventListener("click", () => {
+    hideError();
+    const factCards = {
+      when: whenInput.value.trim(),
+      where: whereInput.value.trim(),
+      who: whoInput.value.trim(),
+      how_to_apply: howToApplyInput.value.trim(),
+      contact: contactInput.value.trim(),
+      meeting_title: meetingTitleInput ? meetingTitleInput.value.trim() : "",
+      host_dept: hostDeptInput ? hostDeptInput.value.trim() : "",
+      report_when: reportWhenInput ? reportWhenInput.value.trim() : "",
+      report_where: reportWhereInput ? reportWhereInput.value.trim() : "",
+      agenda: agendaInput ? agendaInput.value.trim() : "",
+      agenda_results: agendaResultsInput ? agendaResultsInput.value.trim() : "",
+    };
+
+    try {
+      localStorage.setItem(FACT_CARDS_STORAGE_KEY, JSON.stringify(factCards));
+      flashButtonText(saveFactsBtn, "저장 완료!");
+    } catch (error) {
+      showError("브라우저 저장소(localStorage)에 저장할 수 없습니다.");
+    }
+  });
+
+  loadFactsBtn.addEventListener("click", () => {
+    hideError();
+    try {
+      const saved = localStorage.getItem(FACT_CARDS_STORAGE_KEY);
+      if (!saved) {
+        showError("저장된 사실 카드가 없습니다. 먼저 [저장] 버튼을 눌러 주세요.");
+        return;
+      }
+
+      const factCards = JSON.parse(saved);
+      whenInput.value = factCards.when || "";
+      whereInput.value = factCards.where || "";
+      whoInput.value = factCards.who || "";
+      howToApplyInput.value = factCards.how_to_apply || "";
+      contactInput.value = factCards.contact || "";
+      if (meetingTitleInput) meetingTitleInput.value = factCards.meeting_title || "";
+      if (hostDeptInput) hostDeptInput.value = factCards.host_dept || "";
+      if (reportWhenInput) reportWhenInput.value = factCards.report_when || "";
+      if (reportWhereInput) reportWhereInput.value = factCards.report_where || "";
+      if (agendaInput) agendaInput.value = factCards.agenda || "";
+      if (agendaResultsInput) agendaResultsInput.value = factCards.agenda_results || "";
+
+      flashButtonText(loadFactsBtn, "불러오기 완료!");
+    } catch (error) {
+      showError("저장된 사실 카드를 불러오는 중 오류가 발생했습니다.");
     }
   });
 });
