@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>대학 행정 문서 초안 생성기</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <div class="container">
+    <header class="page-header">
+      <h1>대학 행정 문서 초안 생성기</h1>
+      <p class="subtitle">문서 종류와 핵심 사실만 입력하면 AI가 업무 문서 초안을 작성해 줍니다.</p>
+    </header>
+
+    <main class="layout">
+      <!-- 왼쪽: 입력 영역 -->
+      <section class="panel input-panel">
+        <div class="panel-header">
+          <h2>1. 문서 정보 입력</h2>
+          <button type="button" id="fill-sample-btn" class="btn btn-secondary">예시 채우기</button>
+        </div>
+
+        <form id="draft-form" novalidate>
+          <!-- 필수 입력: 문서 종류 -->
+          <div class="form-group">
+            <label for="doc-type">문서 종류 <span class="required">*</span></label>
+            <select id="doc-type" name="doc_type" required>
+              <option value="">-- 문서 종류를 선택하세요 --</option>
+              <option value="보도자료">보도자료</option>
+              <option value="안내문">안내문</option>
+              <option value="기안문">기안문</option>
+              <option value="결과 보고">결과 보고</option>
+              <option value="업무 메일">업무 메일</option>
+            </select>
+          </div>
+
+          <!-- 필수 입력: 제목 -->
+          <div class="form-group">
+            <label for="title">제목 <span class="required">*</span></label>
+            <input
+              type="text"
+              id="title"
+              name="title"
+              placeholder="예: 2026학년도 2학기 신입생 오리엔테이션 안내"
+              required
+            />
+          </div>
+
+          <!-- 핵심 사실 카드 -->
+          <div class="facts-section">
+            <h3>핵심 사실 카드 (있는 정보만 입력하세요)</h3>
+
+            <!-- 일반 문서용 핵심 사실 카드 5칸 -->
+            <div id="general-facts" class="facts-grid">
+              <div class="fact-card">
+                <label for="when">일시</label>
+                <input type="text" id="when" name="when" placeholder="예: 2026. 11. 25.(수) 14:00" />
+              </div>
+              <div class="fact-card">
+                <label for="where">장소</label>
+                <input type="text" id="where" name="where" placeholder="예: 본관 대강당 3층" />
+              </div>
+              <div class="fact-card">
+                <label for="who">대상</label>
+                <input type="text" id="who" name="who" placeholder="예: 학부 신입생 및 재학생" />
+              </div>
+              <div class="fact-card">
+                <label for="how-to-apply">신청 방법</label>
+                <input type="text" id="how-to-apply" name="how_to_apply" placeholder="예: 학사포털 온라인 신청" />
+              </div>
+              <div class="fact-card fact-card-wide">
+                <label for="contact">문의처</label>
+                <input type="text" id="contact" name="contact" placeholder="예: 학생지원팀 (02-1234-5678)" />
+              </div>
+            </div>
+
+            <!-- 결과 보고 전용 핵심 사실 카드 6칸 -->
+            <div id="report-facts" class="facts-grid hidden">
+              <div class="fact-card">
+                <label for="meeting-title">회의제목</label>
+                <input type="text" id="meeting-title" name="meeting_title" placeholder="예: 2026학년도 2학기 학사제도 개편 실무회의" />
+              </div>
+              <div class="fact-card">
+                <label for="host-dept">주관부서</label>
+                <input type="text" id="host-dept" name="host_dept" placeholder="예: 교무처 학사지원팀" />
+              </div>
+              <div class="fact-card">
+                <label for="report-when">일시</label>
+                <input type="text" id="report-when" name="report_when" placeholder="예: 2026. 11. 18.(수) 10:00~11:30" />
+              </div>
+              <div class="fact-card">
+                <label for="report-where">장소</label>
+                <input type="text" id="report-where" name="report_where" placeholder="예: 본관 2층 중회의실" />
+              </div>
+              <div class="fact-card fact-card-wide">
+                <label for="agenda">회의 안건</label>
+                <textarea id="agenda" name="agenda" rows="3" placeholder="예: 1. 수강신청 제도 개선안&#10;2. 계절학기 운영 일정 조정"></textarea>
+              </div>
+              <div class="fact-card fact-card-wide">
+                <label for="agenda-results">안건별 결과 요약</label>
+                <textarea id="agenda-results" name="agenda_results" rows="4" placeholder="예: 1. 장바구니 예비수강신청 기간을 3일로 확대하기로 의결&#10;2. 동계 계절학기는 12월 21일 개강으로 확정"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- 부가 정보: 받는 사람 / 어조 -->
+          <div class="row-two">
+            <div class="form-group">
+              <label for="recipient">받는 사람</label>
+              <input type="text" id="recipient" name="recipient" placeholder="예: 전체 학부생 / 각 단과대학 행정실" />
+            </div>
+
+            <div class="form-group">
+              <label for="tone">어조</label>
+              <select id="tone" name="tone">
+                <option value="공식적">공식적</option>
+                <option value="친근한">친근한</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Prompt 선택 (A / B) -->
+          <div class="form-group">
+            <span class="label-title">Prompt 방식 선택</span>
+            <div class="radio-group">
+              <label class="radio-card">
+                <input type="radio" name="prompt_type" value="A" />
+                <div>
+                  <strong>Prompt A (단순 작성)</strong>
+                  <p>입력한 정보만으로 해당 문서를 자유롭게 작성합니다.</p>
+                </div>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="prompt_type" value="B" checked />
+                <div>
+                  <strong>Prompt B (행정 체크리스트)</strong>
+                  <p>6하원칙·공식 문체·문의처를 점검하고, 없는 내용은 <code>[확인 필요]</code>로 표시합니다.</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- 화면 안내/오류 메시지 영역 -->
+          <div id="error-box" class="alert error-box hidden" role="alert"></div>
+
+          <button type="submit" id="generate-btn" class="btn btn-primary">초안 생성</button>
+        </form>
+      </section>
+
+      <!-- 오른쪽: 결과 영역 -->
+      <section class="panel output-panel">
+        <div class="output-header">
+          <h2>2. 생성된 초안</h2>
+          <div class="output-actions">
+            <button type="button" id="copy-btn" class="btn btn-secondary" disabled>복사</button>
+            <button type="button" id="download-btn" class="btn btn-secondary" disabled>.md 다운로드</button>
+          </div>
+        </div>
+
+        <div id="loading-box" class="loading-box hidden">생성 중...</div>
+
+        <div class="view-tabs">
+          <button type="button" id="tab-preview" class="tab-btn active">미리보기 (보기)</button>
+          <button type="button" id="tab-edit" class="tab-btn">직접 수정 (편집)</button>
+        </div>
+
+        <div id="draft-preview" class="draft-preview">
+          <p class="preview-placeholder">왼쪽에서 문서 정보를 입력하고 [초안 생성] 버튼을 누르면 이곳에 초안이 보기 좋게 표시됩니다.</p>
+        </div>
+
+        <textarea
+          id="draft-output"
+          class="draft-output hidden"
+          placeholder="이곳에서 초안 내용을 자유롭게 수정할 수 있습니다."
+        ></textarea>
+      </section>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
