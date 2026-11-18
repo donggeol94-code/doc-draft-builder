@@ -4,10 +4,44 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>대학 행정 문서 초안 생성기</title>
+  <meta name="theme-color" content="#003670" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="문서초안" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='icons/icon-192.png') }}" />
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
 <body>
-  <div class="container">
+  <!-- 비밀번호 잠금 화면 -->
+  <div id="auth-gate" class="auth-gate {{ 'hidden' if authenticated else '' }}">
+    <div class="auth-card">
+      <div class="circular-emblem auth-emblem" aria-hidden="true">
+        <span>U</span>
+      </div>
+      <h2>접속 비밀번호 확인</h2>
+      <p class="auth-desc">웹앱을 사용하려면 8자리 이상 비밀번호를 입력해 주세요.</p>
+      <form id="auth-form" novalidate>
+        <div class="form-group">
+          <label for="auth-password">비밀번호</label>
+          <input
+            type="password"
+            id="auth-password"
+            name="password"
+            minlength="8"
+            placeholder="8자리 이상 비밀번호 입력"
+            autocomplete="current-password"
+            required
+          />
+        </div>
+        <div id="auth-error" class="alert error-box hidden" role="alert"></div>
+        <button type="submit" id="auth-submit-btn" class="btn btn-primary">입장하기</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="app-shell" class="container {{ '' if authenticated else 'hidden' }}">
     <header class="page-header">
       <div class="header-brand">
         <div class="circular-emblem" aria-hidden="true">
@@ -18,7 +52,10 @@
           <p class="subtitle">문서 종류와 핵심 사실만 입력하면 AI가 업무 문서 초안을 작성해 줍니다.</p>
         </div>
       </div>
-      <div class="header-badge">행정 업무 지원</div>
+      <div class="header-actions">
+        <div class="header-badge">행정 업무 지원</div>
+        <button type="button" id="logout-btn" class="btn-lock" title="다시 잠그기">잠금</button>
+      </div>
     </header>
 
     <main class="layout">
@@ -194,6 +231,28 @@
         ></textarea>
       </section>
     </main>
+  </div>
+
+  <!-- 깔끔한 PWA 설치 안내 팝업 -->
+  <div id="pwa-install-popup" class="pwa-popup hidden" role="dialog" aria-label="앱 설치 안내">
+    <div class="pwa-popup-body">
+      <img
+        src="{{ url_for('static', filename='icons/icon-192.png') }}"
+        alt="문서초안 앱 아이콘"
+        class="pwa-popup-icon"
+      />
+      <div class="pwa-popup-text">
+        <strong>홈 화면에 앱으로 설치</strong>
+        <p id="pwa-install-desc">앱처럼 바로 실행할 수 있어요.</p>
+      </div>
+    </div>
+    <div id="pwa-ios-guide" class="pwa-ios-guide hidden">
+      사파리 하단 <strong>공유 버튼(□↑)</strong> → <strong>“홈 화면에 추가”</strong>를 눌러 주세요.
+    </div>
+    <div class="pwa-popup-actions">
+      <button type="button" id="pwa-dismiss-btn" class="btn btn-secondary">나중에</button>
+      <button type="button" id="pwa-install-btn" class="btn btn-pwa-install">설치</button>
+    </div>
   </div>
 
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>

@@ -1,12 +1,22 @@
+import hashlib
+import hmac
 import os
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_from_directory, session
 from google import genai
 
-# .env 파일에서 환경변수(GEMINI_API_KEY 등)를 불러옵니다.
+# .env 파일에서 환경변수(GEMINI_API_KEY, APP_PASSWORD 등)를 불러옵니다.
 load_dotenv()
 
 app = Flask(__name__)
+
+_configured_secret = os.getenv("FLASK_SECRET_KEY", "").strip()
+_configured_password = os.getenv("APP_PASSWORD", "").strip()
+app.secret_key = _configured_secret or hashlib.sha256(
+    f"doc-draft-builder:{_configured_password}".encode("utf-8")
+).hexdigest()
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 ALLOWED_DOC_TYPES = ["보도자료", "안내문", "기안문", "결과 보고", "업무 메일"]
 ALLOWED_TONES = ["공식적", "친근한"]
@@ -96,12 +106,62 @@ def build_prompt_b(data: dict) -> str:
 @app.route("/")
 def index():
     """메인 화면(index.html)을 보여줍니다."""
-    return render_template("index.html")
+    authenticated = bool(session.get("authenticated"))
+    return render_template("index.html", authenticated=authenticated)
+
+
+@app.route("/manifest.json")
+def manifest():
+    """PWA 매니페스트 파일을 루트 경로에서 제공합니다."""
+    return send_from_directory("static", "manifest.json", mimetype="application/manifest+json")
+
+
+@app.route("/sw.js")
+def service_worker():
+    """PWA 서비스 워커를 루트 스코프에서 제공합니다."""
+    response = send_from_directory("static", "sw.js", mimetype="application/javascript")
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
+@app.route("/api/login", methods=["POST"])
+def login():
+    """접속 비밀번호(8자리 이상)를 확인하고 세션을 인증합니다."""
+    expected_password = os.getenv("APP_PASSWORD", "").strip()
+    if len(expected_password) < 8:
+        app.logger.error("APP_PASSWORD 환경변수가 8자리 이상으로 설정되어 있지 않습니다.")
+        return jsonify({
+            "error": "서버에 접속 비밀번호(APP_PASSWORD, 8자리 이상)가 설정되지 않았습니다."
+        }), 500
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "잘못된 요청 형식입니다."}), 400
+
+    password = (payload.get("password") or "").strip()
+    if len(password) < 8:
+        return jsonify({"error": "비밀번호는 8자리 이상 입력해 주세요."}), 400
+
+    if not hmac.compare_digest(password, expected_password):
+        return jsonify({"error": "비밀번호가 올바르지 않습니다."}), 401
+
+    session["authenticated"] = True
+    return jsonify({"ok": True})
+
+
+@app.route("/api/logout", methods=["POST"])
+def logout():
+    """현재 세션을 잠금 상태로 되돌립니다."""
+    session.pop("authenticated", None)
+    return jsonify({"ok": True})
 
 
 @app.route("/api/generate", methods=["POST"])
 def generate_draft():
     """사용자 입력을 검증하고 Gemini API를 호출해 문서 초안을 생성합니다."""
+    if not session.get("authenticated"):
+        return jsonify({"error": "비밀번호 인증이 필요합니다. 먼저 비밀번호를 입력해 주세요."}), 401
+
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
         return jsonify({"error": "잘못된 요청 형식입니다. 다시 시도해 주세요."}), 400
